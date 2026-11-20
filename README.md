@@ -10,13 +10,14 @@ Clone this repository into your agent skills directory as `subscription-agents`,
 
 ## Model selection
 
-The `recommend` command matches a task type to models currently listed by the provider CLI. It does not call a model:
+The compact interface returns answers and job status as JSON. It lists its operations without reading Python source:
 
 ```bash
-python3 scripts/agent_bridge.py recommend provider=codex task=implementation
+python3 scripts/agent_tools.py help
+python3 scripts/agent_tools.py run --json-file /path/to/task-arguments.json
 ```
 
-Task types: `quick`, `implementation`, `feature`, `architecture`, and `visual`. Claude Code currently has no verified model-list command, so the bridge reports that limitation.
+`run` can select from the current provider catalog when its JSON input includes a `task`: `quick`, `implementation`, `feature`, `architecture`, or `visual`. Claude Code currently has no verified model-list command, so the interface reports that limitation. Read [SKILL.md](SKILL.md) for the short operation guide.
 
 ## Tests
 
@@ -24,4 +25,4 @@ Task types: `quick`, `implementation`, `feature`, `architecture`, and `visual`. 
 python3 -m unittest discover -s tests -v
 ```
 
-See [the harness reference](references/harness.md) for the Python API and JSON CLI.
+The lower-level [harness reference](references/harness.md) covers advanced events, messages, and provider configuration.

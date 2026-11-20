@@ -1,6 +1,6 @@
 # agent_bridge harness: API reference
 
-`scripts/agent_bridge.py` is a Python 3 module that uses only the standard library. It runs background jobs for the local `claude`, `codex` and `agy` CLIs using the subscription logins already on the machine. You can import its functions or drive it through a JSON command line.
+This is the advanced bridge reference. For ordinary calls, use the concise operations in [SKILL.md](../SKILL.md) through `scripts/agent_tools.py`; agents do not need to read the Python implementation. `scripts/agent_bridge.py` is a Python 3 module that uses only the standard library. It runs background jobs for the local `claude`, `codex` and `agy` CLIs using the subscription logins already on the machine. You can import its functions or drive it through a JSON command line when advanced control is needed.
 
 ## Model in one paragraph
 - `start_agent()` creates `runs/<job_id>/` exclusively (0700), writes `manifest.json` and a copy of the prompt, records the job in `bridge.db`, and returns the job id immediately.
