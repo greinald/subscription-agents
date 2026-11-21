@@ -50,7 +50,7 @@ A thread the user started in the Antigravity app (ID like `fd9a3bbf-…`; its fi
 ~/.gemini/bin/agy --app_data_dir=antigravity --conversation <ID> --mode plan -p PROMPT
 ```
 
-Verified 2026-11-21 while the desktop app hub was running. The message lands in that thread, so the user sees it in the app (with `/plan` prefixed in plan mode), and the agent answers with its full thread context. The answer is printed on stdout. The thread's log is also at `~/.gemini/antigravity/brain/<ID>/.system_generated/logs/transcript.jsonl` (`PLANNER_RESPONSE` rows carry `content`; tool steps show denied actions).
+Verified 2026-11-21 while the desktop app hub was running. The CLI writes the message and the answer into the thread's own store (`~/.gemini/antigravity/conversations/<ID>.db`, the same one the app uses), so they become part of the thread (with `/plan` prefixed in plan mode) and the agent answers with its full thread context. An app window that already has the thread open keeps its in-memory copy and does not show them until the user closes and reopens the thread (or restarts the app); nothing else is needed. The answer is printed on stdout. The thread's log is also at `~/.gemini/antigravity/brain/<ID>/.system_generated/logs/transcript.jsonl` (`PLANNER_RESPONSE` rows carry `content`; tool steps show denied actions).
 
 - Read the thread first (last `USER_INPUT` and `PLANNER_RESPONSE` rows) so the question targets what that agent actually claimed.
 - Open with who is writing ("This is Claude, writing at the user's request"), state concrete facts with file paths, and ask numbered questions with a word limit. Use `--mode plan` and say "no file edits" unless edits are authorized.

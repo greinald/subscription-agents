@@ -60,7 +60,9 @@ class PermissionTests(unittest.TestCase):
         self.assertEqual(result["status_after"], {"antigravity": True, "codex": True, "claude": False})
         app = json.load(open(self.p["antigravity_app"]))
         self.assertEqual(app["plugins"], {"x": 1})
-        self.assertEqual(app["userSettings"]["globalPermissionGrants"]["allow"], ["read_file(/keep)"])
+        app_allow = app["userSettings"]["globalPermissionGrants"]["allow"]
+        self.assertEqual(app_allow[0], "read_file(/keep)")
+        self.assertIn("command(git status)", app_allow)
         self.assertIn("command(git push)", app["userSettings"]["globalPermissionGrants"]["deny"])
         config = open(self.p["codex_config"]).read()
         self.assertIn('web_search = "live"', config.split("\n[", 1)[0])

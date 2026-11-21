@@ -119,7 +119,9 @@ def permissions_status(*, home=None):
     out["antigravity_app"] = {
         "file": p["antigravity_app"], "exists": app is not None,
         "preset": ((app or {}).get("userSettings") or {}).get("permissionPreset"),
-        "missing_deny": [_agy_rule(w) for w in deny if _agy_rule(w) not in grants.get("deny", [])]}
+        "missing_deny": [_agy_rule(w) for w in deny if _agy_rule(w) not in grants.get("deny", [])],
+        # App threads reached with thread_ask run under these grants, not the CLI file.
+        "missing_allow": [r for r in policy["antigravity_allow"] if r not in grants.get("allow", [])]}
 
     rules = _codex_patterns(p["codex_rules"])
     text = open(p["codex_config"], encoding="utf-8").read() if os.path.exists(p["codex_config"]) else ""
@@ -138,7 +140,8 @@ def permissions_status(*, home=None):
 
     out["ok"] = {
         "antigravity": not out["antigravity_cli"]["missing_deny"] and not out["antigravity_cli"]["missing_allow"]
-                       and (app is None or not out["antigravity_app"]["missing_deny"]),
+                       and (app is None or not (out["antigravity_app"]["missing_deny"]
+                                                or out["antigravity_app"]["missing_allow"])),
         "codex": not out["codex"]["missing_deny"] and out["codex"]["network_ok"],
         "claude": not out["claude"]["missing_deny"]}
     return out
@@ -196,13 +199,15 @@ def permissions_apply(*, user_approved=False, tools=("antigravity", "codex"), dr
                 _write_json(p["antigravity_cli"], data)
             change(p["antigravity_cli"], {"add_allow": s["missing_allow"], "add_deny": s["missing_deny"]}, apply_cli)
         a = status["antigravity_app"]
-        if a["exists"] and a["missing_deny"]:
+        if a["exists"] and (a["missing_deny"] or a["missing_allow"]):
             def apply_app():
                 data = _load_json(p["antigravity_app"])
                 grants = data.setdefault("userSettings", {}).setdefault("globalPermissionGrants", {})
-                grants["deny"] = _union(grants.get("deny", []), a["missing_deny"])
+                grants["allow"] = _union(grants.get("allow", []), a["missing_allow"])
+                if a["missing_deny"] or grants.get("deny"):
+                    grants["deny"] = _union(grants.get("deny", []), a["missing_deny"])
                 _write_json(p["antigravity_app"], data)
-            change(p["antigravity_app"], {"add_deny": a["missing_deny"]}, apply_app)
+            change(p["antigravity_app"], {"add_allow": a["missing_allow"], "add_deny": a["missing_deny"]}, apply_app)
 
     if "codex" in tools:
         c = status["codex"]
@@ -417,7 +422,8 @@ def thread_ask(thread_id, *, prompt=None, prompt_file=None, sender=None, mode="p
     denied = data.get("denied_actions") or []
     stderr = proc.stderr.strip()[-1000:]
     result = {"thread_id": thread_id, "status": "answered" if answer else "no_answer", "answer": answer,
-              "denied_actions": denied, "exit_code": proc.returncode, "stderr": stderr or None}
+              "denied_actions": denied, "exit_code": proc.returncode, "stderr": stderr or None,
+              "user_note": "Saved in the thread. If it is open in the Antigravity app, close and reopen it to see these turns."}
     if not answer:
         result["hint"] = ("No answer. If stderr or denied_actions name a refused command, resume with the instruction "
                           "to use only read_file, or ask the user to extend the permission policy "

@@ -15,6 +15,8 @@ Things that bite:
 - Rules match whole words from the start of a command, so the policy also denies `git -C`, `git -c`, `git --git-dir`, `git --work-tree`; otherwise `git -C dir push` slips through. Codex cannot match a single token like `--git-dir=/x`.
 - Deny > Ask > Allow. Headless Antigravity defaults to `auto` mode; `--mode plan` writes a plan instead of executing, but runs allowed commands while researching.
 - A refused command without a deny rule is soft-denied: exit 0 and an empty answer. `thread_ask` reports this as `no_answer` with a hint.
+- `--mode auto` is not available on every account (this one: "not available for this account; continuing in the default mode"). In default mode everything outside the allow list is refused, not sandboxed.
+- Antigravity's `run_workflow` tool (parallel sub-agent orchestration scripts) is permission-checked against the script's full text, so no sensible allow rule covers it. Headless runs cannot start workflows; the user approves it once in the app, or the parent runs plain `python3 script.py` steps itself after reading them.
 - The parent agent's own policy may refuse to grant extra permissions per call (`agy --settings`). Change the standing policy with the user's approval instead. Never use `--dangerously-skip-permissions`.
 - `codex execpolicy check --rules FILE git push origin main` checks a rule by hand; pass separate words (in zsh use `${=cmd}`).
 - Restart the Antigravity app if it does not pick up a changed `config.json`.

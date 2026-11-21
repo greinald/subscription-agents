@@ -18,7 +18,7 @@ Use the small command interface in [scripts/agent_tools.py](scripts/agent_tools.
 | `check` | Checks CLI availability and account status. Makes no model call. |
 | `send` | Queues a message. An active provider turn receives it only on a later turn. |
 | `thread_read` | Last messages of an Antigravity desktop-app thread the user named by id (`{"thread_id":"…","last":4}`). No model call. |
-| `thread_ask` | Sends a message into that app thread and returns its answer (`{"thread_id":"…","prompt":"…","sender":"Claude"}`, plan mode by default). `status: no_answer` comes with a `hint`. |
+| `thread_ask` | Sends a message into that app thread and returns its answer (`{"thread_id":"…","prompt":"…","sender":"Claude"}`, plan mode by default). `status: no_answer` comes with a `hint`. Both turns are saved in the thread; tell the user to close and reopen it in the app if it is open, since the app does not refresh an open thread. |
 | `permissions_status` | Compares Antigravity, Codex and Claude permission files with [the baseline policy](references/permission-policy.json). No model call, no arguments. |
 | `permissions_apply` | Merges the policy into those files with backups. Needs `user_approved: true` (only after the user agreed) or `dry_run: true`. `tools` defaults to antigravity + codex. |
 | `permissions_test` | Checks the rules without model calls; `live: true` runs each agent in a throwaway repo and checks that commits are blocked and network works. |
