@@ -11,6 +11,7 @@ import json
 import sys
 import time
 
+import agent_admin as admin
 import agent_bridge as bridge
 
 MAX_WAIT_SECONDS = 55
@@ -37,6 +38,18 @@ OPERATIONS = {
               "required": ["provider"], "optional": ["cli_override", "min_cli_version"]},
     "send": {"purpose": "Queue a message; active turns receive it only on a later turn.",
              "required": ["sender", "recipient", "body"], "optional": ["kind", "run_root"]},
+    "thread_read": {"purpose": "Last messages of an Antigravity desktop-app thread; no model call.",
+                    "required": ["thread_id"], "optional": ["last", "max_chars"]},
+    "thread_ask": {"purpose": "Send a message into an Antigravity desktop-app thread; return its answer.",
+                   "required": ["thread_id", "prompt or prompt_file"],
+                   "optional": ["sender", "mode (plan|accept-edits|auto, default plan)", "model", "timeout_seconds"]},
+    "permissions_status": {"purpose": "Compare agents' standing permissions with the baseline policy; no model call.",
+                           "required": [], "optional": []},
+    "permissions_apply": {"purpose": "Merge the baseline policy into agent config files (backs them up).",
+                          "required": ["user_approved=true (or dry_run=true)"],
+                          "optional": ["tools (antigravity, codex, claude; default antigravity+codex)", "dry_run"]},
+    "permissions_test": {"purpose": "Check rules without model calls; live=true also runs each agent in a throwaway repo.",
+                         "required": [], "optional": ["live", "tools", "timeout_seconds"]},
 }
 
 
@@ -145,7 +158,10 @@ def send(sender, recipient, body, *, kind="note", run_root=None):
 
 
 CALLS = {"run": run, "collect": collect, "follow_up": follow_up, "finish": finish,
-         "cancel": cancel, "recommend": recommend, "check": check, "send": send}
+         "cancel": cancel, "recommend": recommend, "check": check, "send": send,
+         "thread_read": admin.thread_read, "thread_ask": admin.thread_ask,
+         "permissions_status": admin.permissions_status, "permissions_apply": admin.permissions_apply,
+         "permissions_test": admin.permissions_test}
 
 
 def main(argv=None):
@@ -157,10 +173,12 @@ def main(argv=None):
         if args.operation == "help":
             result = OPERATIONS
         else:
-            if not args.json_file:
+            if not args.json_file and args.operation not in ("permissions_status", "permissions_test"):
                 raise ValueError("pass --json-file with an object of named arguments")
-            with open(args.json_file, encoding="utf-8") as f:
-                params = json.load(f)
+            params = {}
+            if args.json_file:
+                with open(args.json_file, encoding="utf-8") as f:
+                    params = json.load(f)
             if not isinstance(params, dict):
                 raise ValueError("JSON input must be an object")
             result = CALLS[args.operation](**params)

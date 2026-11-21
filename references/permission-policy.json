@@ -1,0 +1,40 @@
+{
+  "_about": "Baseline agent permissions applied by agent_tools.py permissions_apply. Commands are word lists matched from the start of a command. Edit this file, then run permissions_apply with user_approved=true.",
+  "deny_commands": [
+    ["git", "push"],
+    ["git", "commit"],
+    ["git", "reset"],
+    ["git", "checkout"],
+    ["git", "worktree", "remove"],
+    ["git", "-C"],
+    ["git", "-c"],
+    ["git", "--git-dir"],
+    ["git", "--work-tree"],
+    ["rm", "-rf"],
+    ["npx", "prisma", "migrate"],
+    ["prisma", "migrate"],
+    ["docker", "compose", "down"]
+  ],
+  "antigravity_allow": [
+    "read_file(~/Documents/GitHub)",
+    "read_file(~/.gemini/antigravity/brain)",
+    "command(git status)",
+    "command(git diff)",
+    "command(git log)",
+    "command(git show)",
+    "command(ls)",
+    "command(rg)",
+    "command(grep)",
+    "command(cat)",
+    "command(head)",
+    "command(wc)",
+    "command(python3)",
+    "command(node)",
+    "command(npx tsx)",
+    "command(regex:npm (test|run (build|lint|test)))",
+    "command(curl)",
+    "read_url(*)"
+  ],
+  "codex_web_search": "live",
+  "codex_network_access": true
+}

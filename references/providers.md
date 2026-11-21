@@ -42,6 +42,21 @@ An effort suffix in a model ID must agree with `--effort`: changing `gemini-3.8-
 
 Observed behavior: headless agy can return exit 0 and `status: SUCCESS` with an empty response and nonempty `denied_actions`. The harness treats this as failure and retains the action names. Inspect the requested scope, then resume the same conversation with the necessary authorized rules. Do not use permission bypass flags or claim success from the status field alone. If exact denied command details are unavailable, ask the child to return a structured request naming the command before attempting it.
 
+### Talking to an existing Antigravity desktop-app thread
+
+A thread the user started in the Antigravity app (ID like `fd9a3bbf-…`; its files are in `~/.gemini/antigravity/brain/<ID>/`) is stored in the app's data directory `antigravity`. The CLI defaults to `antigravity-cli`, so `agy --conversation <ID>` alone fails with `trajectory not found`. Pass the app data directory (a hidden flag, the same one the running app hub uses):
+
+```text
+~/.gemini/bin/agy --app_data_dir=antigravity --conversation <ID> --mode plan -p PROMPT
+```
+
+Verified 2026-11-21 while the desktop app hub was running. The message lands in that thread, so the user sees it in the app (with `/plan` prefixed in plan mode), and the agent answers with its full thread context. The answer is printed on stdout. The thread's log is also at `~/.gemini/antigravity/brain/<ID>/.system_generated/logs/transcript.jsonl` (`PLANNER_RESPONSE` rows carry `content`; tool steps show denied actions).
+
+- Read the thread first (last `USER_INPUT` and `PLANNER_RESPONSE` rows) so the question targets what that agent actually claimed.
+- Open with who is writing ("This is Claude, writing at the user's request"), state concrete facts with file paths, and ask numbered questions with a word limit. Use `--mode plan` and say "no file edits" unless edits are authorized.
+- If the agent's answer is empty because a command was refused, resume the same conversation and tell it to use only `read_file`, or ask the user to extend the allow list. Permission files, modes, sandbox and network behaviour: [permissions](permissions.md).
+- The CLI bridge (`agent_tools.py follow_up`) only resumes jobs it started; use the command above for app threads.
+
 Observed catalog examples: `gemini-4-argon-high`, `gemini-4-hydrogen-xhigh`, `gemini-3.8-flash-low`. Query the live catalog before selecting an unfamiliar ID.
 
 Sources: [Antigravity CLI installation and account authentication](https://antigravity.google/docs/install?tab=cli), [CLI overview](https://antigravity.google/docs/cli/overview/), [Gemini CLI account authentication](https://geminicli.com/docs/get-started/authentication/).
@@ -55,6 +70,8 @@ codex exec --json --skip-git-repo-check -C WORKDIR -s read-only -c approval_poli
 ```
 
 Use argv arrays in code; the quoting above illustrates shell use. Redirect unused stdin to avoid hanging. Explicit authorized builders can use `workspace-write`. `-a` is a global CLI option, not an `exec` option; configuration overrides work for noninteractive use. Resume uses the recorded session ID; verify resume-specific flags because its grammar differs from `exec`. Do not use `--ephemeral` when follow-up turns are required.
+
+Command rules (`~/.codex/rules/default.rules`), sandbox modes, web search and shell network (`~/.codex/config.toml`): [permissions](permissions.md).
 
 Check model availability locally (`codex debug models` where supported). The native collaboration tool's model list does not determine what a separately authenticated Codex CLI can run.
 
