@@ -18,6 +18,16 @@ class PermissionTests(unittest.TestCase):
     def setUp(self):
         self.home = tempfile.mkdtemp(prefix="agent-admin-test-")
         self.p = admin._paths(self.home)
+        # A fixed test policy, independent of the user's current (possibly empty) deny list.
+        policy = os.path.join(self.home, "policy.json")
+        with open(policy, "w") as f:
+            json.dump({"deny_commands": [["git", "push"], ["git", "commit"], ["git", "-C"], ["git", "-c"],
+                                         ["git", "--git-dir"], ["rm", "-rf"]],
+                       "antigravity_allow": ["read_file(~/Documents/GitHub)", "command(git status)"],
+                       "codex_web_search": "live", "codex_network_access": True}, f)
+        patcher = mock.patch.dict(os.environ, {"AGENT_PERMISSION_POLICY": policy})
+        patcher.start()
+        self.addCleanup(patcher.stop)
         os.makedirs(os.path.dirname(self.p["antigravity_app"]))
         with open(self.p["antigravity_app"], "w") as f:
             json.dump({"plugins": {"x": 1}, "userSettings": {

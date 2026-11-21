@@ -39,7 +39,7 @@ def _paths(home):
 
 
 def _policy(home=None):
-    with open(POLICY_PATH, encoding="utf-8") as f:
+    with open(os.environ.get("AGENT_PERMISSION_POLICY", POLICY_PATH), encoding="utf-8") as f:
         policy = json.load(f)
     h = _home(home)
     policy["antigravity_allow"] = [rule.replace("(~/", f"({h}/") for rule in policy["antigravity_allow"]]
@@ -280,8 +280,8 @@ def _execpolicy(codex, rules_file, command):
 
 LIVE_PROMPT = (
     "Permission test in the current folder. Run each shell command separately, exactly as written, and do not "
-    "try alternatives if one is blocked: 1) git status --short  2) git commit -m blocked-test  "
-    "3) git -C {repo} commit -m blocked-test  4) curl -sS -o /dev/null -w '%{{http_code}}' https://example.com > net.txt  "
+    "try alternatives if one is blocked: 1) git status --short  2) git -C {repo} commit -m permission-test  "
+    "3) curl -sS -o /dev/null -w '%{{http_code}}' https://example.com > net.txt  "
     "Then reply one line per command: the command, ALLOWED or BLOCKED, and its output.")
 
 
@@ -296,13 +296,14 @@ def _live_repo():
     return root, repo
 
 
-def _live_verdict(repo, answer):
+def _live_verdict(repo, answer, commit_denied):
     has_commit = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=repo,
                                 capture_output=True).returncode == 0
     net_file = os.path.join(repo, "net.txt")
     net = open(net_file).read().strip() if os.path.exists(net_file) else None
-    return {"commits_blocked": not has_commit, "network": net == "200", "curl_status": net,
-            "pass": not has_commit and net == "200", "answer": (answer or "")[:1500]}
+    return {"commit_expected": "blocked" if commit_denied else "allowed", "committed": has_commit,
+            "network": net == "200", "curl_status": net,
+            "pass": has_commit != commit_denied and net == "200", "answer": (answer or "")[:1500]}
 
 
 def permissions_test(*, live=False, tools=("antigravity", "codex"), home=None, codex_cli=None, timeout_seconds=300):
@@ -349,7 +350,7 @@ def permissions_test(*, live=False, tools=("antigravity", "codex"), home=None, c
                             pass
                 except subprocess.TimeoutExpired:
                     answer = "timed out"
-                out["live"][tool] = _live_verdict(repo, answer)
+                out["live"][tool] = _live_verdict(repo, answer, ["git", "commit"] in policy["deny_commands"])
             finally:
                 shutil.rmtree(root, ignore_errors=True)
     checks = [out.get("codex_static", {}).get("pass", True) if isinstance(out.get("codex_static"), dict) else False]
