@@ -472,7 +472,9 @@ class AgyParser:
         if o.get("denied_actions"):
             actions = [str(a.get("action", "unknown")) for a in o["denied_actions"] if isinstance(a, dict)]
             return _fail("agy headless tool permission denied: " + ", ".join(actions)
-                         + "; supply task-scoped agy_settings.permissions.allow rules", result_text=text, **common)
+                         + "; agy does not report the denied path. Add task-scoped agy_settings.permissions.allow"
+                         " rules naming plain directories or files, e.g. read_file(/abs/dir); the job cwd is"
+                         " already readable", result_text=text, **common)
         if o.get("status") != "SUCCESS":
             return _fail(f"agy status={o.get('status')}: {str(o.get('error') or text or '')[:800]}",
                          result_text=text, **common)
@@ -488,6 +490,46 @@ def make_parser(provider_or_format):
 
 
 # --------------------------------------------------------------------------- command building
+
+_AGY_PATH_RULE_RE = re.compile(r"^(read_file|write_file)\((.+)\)$")
+
+
+def _path_aliases(path):
+    """The path plus its macOS /tmp <-> /private/tmp and /var <-> /private/var spellings."""
+    out = [path]
+    for short, real in (("/tmp", "/private/tmp"), ("/var", "/private/var")):
+        for a, b in ((short, real), (real, short)):
+            if path == a or path.startswith(a + "/"):
+                alias = b + path[len(a):]
+                if alias not in out:
+                    out.append(alias)
+    return out
+
+
+def normalize_agy_settings(settings, cwd):
+    """Session settings for headless agy with path rules the CLI actually honours.
+
+    agy silently rejects glob path rules such as read_file(/dir/**): only a plain file or
+    directory path matches (verified 2026-11-22). Globs are reduced to their directory, each
+    path gets its /tmp and /private aliases, and the job's own cwd is always readable.
+    """
+    obj = json.loads(settings) if isinstance(settings, str) else dict(settings or {})
+    perms = dict(obj.get("permissions") or {})
+    allow = []
+    for rule in list(perms.get("allow") or []) + [f"read_file({cwd})"]:
+        m = _AGY_PATH_RULE_RE.match(rule) if isinstance(rule, str) else None
+        paths = [None]
+        if m:
+            path = re.sub(r"(/\*\*?)+$", "", os.path.expanduser(m.group(2))) or "/"
+            paths = _path_aliases(path)
+        for p in paths:
+            r = rule if p is None else f"{m.group(1)}({p})"
+            if r not in allow:
+                allow.append(r)
+    perms["allow"] = allow
+    obj["permissions"] = perms
+    return json.dumps(obj)
+
 
 def build_command(provider, spec, cli_path, run_dir, prompt_text):
     """Return (argv, stdin_is_prompt). Pure function: no I/O, no shell."""
@@ -541,8 +583,7 @@ def build_command(provider, spec, cli_path, run_dir, prompt_text):
             argv += ["--effort", effort]
         if resume:
             argv += ["--conversation", resume]
-        if spec.get("agy_settings") is not None:
-            argv += ["--settings", spec["agy_settings"]]
+        argv += ["--settings", normalize_agy_settings(spec.get("agy_settings"), spec["cwd"])]
         argv += ["-p", prompt]
         return argv, False
     raise ValueError(f"unknown provider {provider!r}")

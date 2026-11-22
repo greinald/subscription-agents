@@ -424,6 +424,23 @@ class CommandBuildingTests(unittest.TestCase):
         argv, _ = ab.build_command("agy", {"cwd": "/w"}, "/bin/agy", "/run", "--help me")
         self.assertFalse(argv[-1].startswith("-"))
 
+    def test_agy_settings_make_path_rules_work(self):
+        # agy rejects glob path rules (read_file(/dir/**) was denied, read_file(/dir) allowed:
+        # verified live 2026-11-22), so globs become directories, macOS /tmp aliases are added,
+        # and the job cwd is always readable even without caller settings.
+        argv, _ = self.build("agy")
+        allow = json.loads(argv[argv.index("--settings") + 1])["permissions"]["allow"]
+        self.assertEqual(allow, ["read_file(/work)"])
+        settings = {"permissions": {"allow": ["read_file(/tmp/x/**)", "write_file(/work/a.ts)",
+                                              "command(rg)", "read_file(/work)"]}, "other": 1}
+        argv, _ = self.build("agy", agy_settings=json.dumps(settings))
+        obj = json.loads(argv[argv.index("--settings") + 1])
+        self.assertEqual(obj["other"], 1)
+        self.assertEqual(obj["permissions"]["allow"],
+                         ["read_file(/tmp/x)", "read_file(/private/tmp/x)", "write_file(/work/a.ts)",
+                          "command(rg)", "read_file(/work)"])
+        self.assertFalse(any("*" in r for r in obj["permissions"]["allow"]))
+
     def test_invalid_options_rejected_before_any_job(self):
         with tempfile.TemporaryDirectory() as d:
             b = ab.Bridge(os.path.join(d, "s"))
